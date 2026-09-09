@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Research Agent – IBM watsonx</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    background: #0f1117;
+    color: #e2e8f0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── Header ── */
+  header {
+    background: #161b27;
+    border-bottom: 1px solid #2d3748;
+    padding: 0 24px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .header-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .header-logo {
+    width: 32px; height: 32px;
+    background: linear-gradient(135deg, #6B48FF, #3b82f6);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 700; color: #fff;
+  }
+  .header-title { font-size: 17px; font-weight: 600; color: #f0f4f8; }
+  .header-subtitle { font-size: 12px; color: #718096; margin-left: 4px; }
+  .header-badge {
+    background: #6B48FF22;
+    border: 1px solid #6B48FF55;
+    color: #a78bfa;
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 20px;
+  }
+
+  /* ── Main layout ── */
+  main {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 260px;
+    background: #161b27;
+    border-right: 1px solid #2d3748;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    padding: 20px 0;
+  }
+  .sidebar-section-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #4a5568;
+    padding: 0 20px 10px;
+  }
+  .quick-btn {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 20px;
+    cursor: pointer;
+    border-radius: 0;
+    background: transparent;
+    border: none;
+    color: #a0aec0;
+    font-size: 13px;
+    text-align: left;
+    width: 100%;
+    transition: background 0.15s, color 0.15s;
+    line-height: 1.4;
+  }
+  .quick-btn:hover { background: #1e2535; color: #e2e8f0; }
+  .quick-btn .qb-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .sidebar-divider {
+    border: none; border-top: 1px solid #2d3748;
+    margin: 16px 0;
+  }
+  .sidebar-settings {
+    padding: 0 20px;
+  }
+  .settings-label {
+    font-size: 11px; color: #4a5568; margin-bottom: 6px; display: block;
+  }
+  .settings-select, .settings-input {
+    width: 100%;
+    background: #1a2030;
+    border: 1px solid #2d3748;
+    border-radius: 6px;
+    color: #e2e8f0;
+    font-size: 12px;
+    padding: 6px 10px;
+    margin-bottom: 10px;
+    outline: none;
+  }
+  .settings-select:focus, .settings-input:focus { border-color: #6B48FF; }
+  .settings-input::placeholder { color: #4a5568; }
+
+  /* ── Chat area ── */
+  .chat-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    scroll-behavior: smooth;
+  }
+  .messages::-webkit-scrollbar { width: 6px; }
+  .messages::-webkit-scrollbar-thumb { background: #2d3748; border-radius: 3px; }
+
+  /* ── Welcome screen ── */
+  .welcome {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    flex: 1;
+    gap: 16px;
+    padding: 40px;
+  }
+  .welcome-icon {
+    width: 72px; height: 72px;
+    background: linear-gradient(135deg, #6B48FF, #3b82f6);
+    border-radius: 18px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 36px;
+  }
+  .welcome h1 { font-size: 26px; font-weight: 700; color: #f0f4f8; }
+  .welcome p { font-size: 14px; color: #718096; max-width: 480px; line-height: 1.6; }
+  .welcome-chips {
+    display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 8px;
+  }
+  .chip {
+    background: #1a2030;
+    border: 1px solid #2d3748;
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 13px;
+    color: #a0aec0;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .chip:hover { background: #252d3f; color: #e2e8f0; border-color: #6B48FF; }
+
+  /* ── Messages ── */
+  .msg { display: flex; gap: 12px; max-width: 900px; width: 100%; align-self: flex-start; }
+  .msg.user { align-self: flex-end; flex-direction: row-reverse; }
+
+  .msg-avatar {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; flex-shrink: 0;
+    background: #1a2030;
+    border: 1px solid #2d3748;
+  }
+  .msg.user .msg-avatar { background: #6B48FF22; border-color: #6B48FF55; }
+
+  .msg-bubble {
+    background: #1a2030;
+    border: 1px solid #2d3748;
+    border-radius: 14px;
+    padding: 14px 18px;
+    font-size: 14px;
+    line-height: 1.65;
+    color: #e2e8f0;
+    max-width: calc(100% - 48px);
+  }
+  .msg.user .msg-bubble {
+    background: #6B48FF1a;
+    border-color: #6B48FF44;
+  }
+
+  /* Markdown-style content */
+  .msg-bubble h1, .msg-bubble h2, .msg-bubble h3 {
+    color: #f0f4f8; margin: 16px 0 8px; font-weight: 600;
+  }
+  .msg-bubble h2 { font-size: 15px; border-bottom: 1px solid #2d3748; padding-bottom: 4px; }
+  .msg-bubble h3 { font-size: 14px; color: #a78bfa; }
+  .msg-bubble p { margin: 6px 0; }
+  .msg-bubble ul, .msg-bubble ol { padding-left: 20px; margin: 6px 0; }
+  .msg-bubble li { margin: 3px 0; }
+  .msg-bubble code {
+    background: #0f1117; border: 1px solid #2d3748;
+    border-radius: 4px; padding: 1px 5px; font-size: 12px; color: #68d391;
+  }
+  .msg-bubble pre {
+    background: #0f1117; border: 1px solid #2d3748;
+    border-radius: 8px; padding: 14px; overflow-x: auto; margin: 10px 0;
+  }
+  .msg-bubble pre code { background: none; border: none; padding: 0; color: #68d391; }
+  .msg-bubble strong { color: #f0f4f8; }
+  .msg-bubble blockquote {
+    border-left: 3px solid #6B48FF; padding-left: 12px;
+    color: #a0aec0; margin: 8px 0;
+  }
+  .msg-bubble a { color: #63b3ed; text-decoration: none; }
+  .msg-bubble a:hover { text-decoration: underline; }
+  .msg-bubble hr { border: none; border-top: 1px solid #2d3748; margin: 12px 0; }
+  .msg-bubble table {
+    width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 13px;
+  }
+  .msg-bubble th { background: #252d3f; color: #e2e8f0; padding: 8px 12px; text-align: left; }
+  .msg-bubble td { padding: 7px 12px; border-bottom: 1px solid #2d3748; color: #a0aec0; }
+
+  .msg-meta { font-size: 11px; color: #4a5568; margin-top: 6px; }
+
+  /* Typing indicator */
+  .typing-dots { display: flex; gap: 4px; padding: 6px 0; }
+  .typing-dots span {
+    width: 6px; height: 6px; background: #6B48FF;
+    border-radius: 50%; animation: bounce 1.2s infinite;
+  }
+  .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce {
+    0%, 80%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-6px); }
+  }
+
+  /* ── Input area ── */
+  .input-area {
+    border-top: 1px solid #2d3748;
+    padding: 16px 24px 20px;
+    background: #161b27;
+    flex-shrink: 0;
+  }
+  .input-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    background: #1a2030;
+    border: 1px solid #2d3748;
+    border-radius: 12px;
+    padding: 10px 12px;
+    transition: border-color 0.15s;
+  }
+  .input-row:focus-within { border-color: #6B48FF; }
+  #user-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #e2e8f0;
+    font-size: 14px;
+    resize: none;
+    max-height: 160px;
+    min-height: 24px;
+    line-height: 1.5;
+    font-family: inherit;
+  }
+  #user-input::placeholder { color: #4a5568; }
+  #send-btn {
+    width: 36px; height: 36px;
+    background: #6B48FF;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 16px;
+    transition: background 0.15s, transform 0.1s;
+    flex-shrink: 0;
+  }
+  #send-btn:hover { background: #5a3de8; }
+  #send-btn:active { transform: scale(0.94); }
+  #send-btn:disabled { background: #2d3748; cursor: not-allowed; }
+  .input-hint {
+    font-size: 11px; color: #4a5568; margin-top: 8px; text-align: center;
+  }
+
+  /* Status bar */
+  .status-bar {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; color: #4a5568; margin-bottom: 8px;
+  }
+  .status-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #48bb78;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .status-dot.error { background: #fc8181; animation: none; }
+
+  /* Toolbar buttons */
+  .msg-toolbar {
+    display: flex; gap: 6px; margin-top: 8px;
+  }
+  .toolbar-btn {
+    background: #252d3f; border: 1px solid #2d3748;
+    border-radius: 6px; padding: 4px 10px;
+    font-size: 11px; color: #718096; cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .toolbar-btn:hover { background: #2d3a50; color: #e2e8f0; }
+</style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header>
+  <div class="header-brand">
+    <div class="header-logo">R</div>
+    <div>
+      <span class="header-title">Research Agent</span>
+      <span class="header-subtitle">IBM watsonx Orchestrate</span>
+    </div>
+  </div>
+  <span class="header-badge">granite-4-h-small</span>
+</header>
+
+<main>
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="sidebar-section-label">Quick Actions</div>
+
+    <button class="quick-btn" data-prompt="Research the latest advances in large language models and write a comprehensive research report with references.">
+      <span class="qb-icon">🔬</span>
+      <span>Full Research Pipeline</span>
+    </button>
+    <button class="quick-btn" data-prompt="Search for the top 8 papers on quantum computing published after 2022 using Semantic Scholar.">
+      <span class="qb-icon">🔍</span>
+      <span>Search Literature</span>
+    </button>
+    <button class="quick-btn" data-prompt="Summarize the paper 'Attention is All You Need' by Vaswani et al., focusing on the methodology and key contributions.">
+      <span class="qb-icon">📝</span>
+      <span>Summarize Paper</span>
+    </button>
+    <button class="quick-btn" data-prompt="Organize my references in APA format and remove duplicates.">
+      <span class="qb-icon">📚</span>
+      <span>Organize References</span>
+    </button>
+    <button class="quick-btn" data-prompt="Draft a 1500-word research report on federated learning with a focus on privacy-preserving machine learning.">
+      <span class="qb-icon">📄</span>
+      <span>Draft Research Report</span>
+    </button>
+    <button class="quick-btn" data-prompt="What are the main challenges and open problems in explainable artificial intelligence?">
+      <span class="qb-icon">💡</span>
+      <span>Ask a Research Question</span>
+    </button>
+
+    <hr class="sidebar-divider" />
+
+    <div class="sidebar-settings">
+      <span class="settings-label">Literature Source</span>
+      <select class="settings-select" id="pref-source">
+        <option value="semantic_scholar">Semantic Scholar</option>
+        <option value="arxiv">arXiv</option>
+        <option value="crossref">CrossRef</option>
+      </select>
+
+      <span class="settings-label">Citation Format</span>
+      <select class="settings-select" id="pref-format">
+        <option value="apa">APA</option>
+        <option value="mla">MLA</option>
+        <option value="ieee">IEEE</option>
+        <option value="bibtex">BibTeX</option>
+        <option value="chicago">Chicago</option>
+      </select>
+
+      <span class="settings-label">Max Papers</span>
+      <input class="settings-input" id="pref-maxpapers" type="number" value="8" min="3" max="20" />
+
+      <span class="settings-label">Backend URL</span>
+      <input class="settings-input" id="backend-url" type="text" value="http://localhost:8000" placeholder="http://localhost:8000" />
+    </div>
+  </aside>
+
+  <!-- ── Chat ── -->
+  <div class="chat-area">
+    <div class="messages" id="messages">
+      <div class="welcome" id="welcome-screen">
+        <div class="welcome-icon">🔬</div>
+        <h1>Research Agent</h1>
+        <p>
+          I autonomously search academic literature, summarize papers,
+          organize references, and draft research reports — powered by
+          <strong>IBM watsonx Granite</strong>.
+        </p>
+        <div class="welcome-chips">
+          <span class="chip" data-prompt="Research transformer architectures in NLP and write a full report">Research a topic</span>
+          <span class="chip" data-prompt="Find the top papers on CRISPR gene editing published in 2023">Search papers</span>
+          <span class="chip" data-prompt="Summarize: Highly Accurate Protein Structure Prediction with AlphaFold (Jumper et al., 2021)">Summarize paper</span>
+          <span class="chip" data-prompt="What are the key open challenges in autonomous driving AI?">Ask a question</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input -->
+    <div class="input-area">
+      <div class="status-bar">
+        <div class="status-dot" id="status-dot"></div>
+        <span id="status-text">Connected · Research Agent ready</span>
+      </div>
+      <div class="input-row">
+        <textarea
+          id="user-input"
+          rows="1"
+          placeholder="Ask me to research a topic, search papers, summarize, or draft a report…"
+        ></textarea>
+        <button id="send-btn" title="Send">➤</button>
+      </div>
+      <div class="input-hint">Shift+Enter for new line · Enter to send</div>
+    </div>
+  </div>
+</main>
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+let threadId = null;
+let isLoading = false;
+
+// ── DOM refs ─────────────────────────────────────────────────────────────────
+const messagesEl = document.getElementById('messages');
+const inputEl    = document.getElementById('user-input');
+const sendBtn    = document.getElementById('send-btn');
+const statusDot  = document.getElementById('status-dot');
+const statusText = document.getElementById('status-text');
+const welcomeEl  = document.getElementById('welcome-screen');
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function getBackendUrl() {
+  return (document.getElementById('backend-url').value || 'http://localhost:8000').replace(/\/$/, '');
+}
+
+function hideWelcome() {
+  if (welcomeEl) { welcomeEl.style.display = 'none'; }
+}
+
+function setStatus(text, error = false) {
+  statusText.textContent = text;
+  statusDot.className = 'status-dot' + (error ? ' error' : '');
+}
+
+// Auto-resize textarea
+inputEl.addEventListener('input', () => {
+  inputEl.style.height = 'auto';
+  inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + 'px';
+});
+
+// Simple Markdown → HTML (light renderer)
+function mdToHtml(text) {
+  return text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    // Restore code blocks first (before other replacements)
+    .replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) =>
+      `<pre><code>${code}</code></pre>`)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    // Headings
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    // Bold / italic
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+    // Horizontal rule
+    .replace(/^---+$/gm, '<hr>')
+    // Blockquote
+    .replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>')
+    // Unordered lists
+    .replace(/^[\-\*] (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>)(\n(?!<li>))/gs, '<ul>$1</ul>$2')
+    // Ordered lists
+    .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
+    // Links
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+    // Paragraphs (double newline)
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/^(?!<[houpbl])(.+)$/gm, (m) =>
+      m.trim() && !m.startsWith('<') ? `<p>${m}</p>` : m)
+    // Single newlines inside paragraphs
+    .replace(/(?<!\>)\n(?!<)/g, '<br>');
+}
+
+function appendMessage(role, content, isHtml = false) {
+  hideWelcome();
+  const msg = document.createElement('div');
+  msg.className = `msg ${role}`;
+
+  const avatar = document.createElement('div');
+  avatar.className = 'msg-avatar';
+  avatar.textContent = role === 'user' ? '👤' : '🔬';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  bubble.innerHTML = isHtml ? content : mdToHtml(content);
+
+  // Copy button for agent messages
+  if (role === 'agent') {
+    const toolbar = document.createElement('div');
+    toolbar.className = 'msg-toolbar';
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'toolbar-btn';
+    copyBtn.textContent = '📋 Copy';
+    copyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(content).then(() => {
+        copyBtn.textContent = '✓ Copied';
+        setTimeout(() => { copyBtn.textContent = '📋 Copy'; }, 2000);
+      });
+    });
+    toolbar.appendChild(copyBtn);
+    bubble.appendChild(toolbar);
+  }
+
+  const meta = document.createElement('div');
+  meta.className = 'msg-meta';
+  meta.textContent = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+  bubble.appendChild(meta);
+
+  msg.appendChild(avatar);
+  msg.appendChild(bubble);
+  messagesEl.appendChild(msg);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+  return msg;
+}
+
+function appendTyping() {
+  hideWelcome();
+  const msg = document.createElement('div');
+  msg.className = 'msg agent';
+  msg.id = 'typing-indicator';
+
+  const avatar = document.createElement('div');
+  avatar.className = 'msg-avatar';
+  avatar.textContent = '🔬';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  bubble.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
+
+  msg.appendChild(avatar);
+  msg.appendChild(bubble);
+  messagesEl.appendChild(msg);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+  return msg;
+}
+
+function removeTyping() {
+  const el = document.getElementById('typing-indicator');
+  if (el) el.remove();
+}
+
+// ── Preferences helper ────────────────────────────────────────────────────────
+function enrichPromptWithPrefs(prompt) {
+  const source = document.getElementById('pref-source').value;
+  const fmt    = document.getElementById('pref-format').value;
+  const max    = document.getElementById('pref-maxpapers').value;
+
+  // Only inject prefs if user doesn't already mention them
+  const lower = prompt.toLowerCase();
+  let prefs = [];
+  if (!lower.includes('semantic_scholar') && !lower.includes('arxiv') && !lower.includes('crossref'))
+    prefs.push(`Use ${source} as the literature source.`);
+  if (!lower.includes('apa') && !lower.includes('mla') && !lower.includes('ieee') && !lower.includes('bibtex'))
+    prefs.push(`Format references in ${fmt.toUpperCase()}.`);
+  if (prefs.length) return prompt + ' ' + prefs.join(' ');
+  return prompt;
+}
+
+// ── Send message ──────────────────────────────────────────────────────────────
+async function sendMessage(text) {
+  if (!text.trim() || isLoading) return;
+
+  isLoading = true;
+  sendBtn.disabled = true;
+  setStatus('Thinking…');
+
+  const enriched = enrichPromptWithPrefs(text.trim());
+  appendMessage('user', text.trim());
+  inputEl.value = '';
+  inputEl.style.height = 'auto';
+
+  const typingEl = appendTyping();
+
+  try {
+    const backendUrl = getBackendUrl();
+    const body = { message: enriched };
+    if (threadId) body.thread_id = threadId;
+
+    const res = await fetch(`${backendUrl}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    removeTyping();
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Backend error ${res.status}: ${errText}`);
+    }
+
+    const data = await res.json();
+    if (data.thread_id) threadId = data.thread_id;
+
+    const reply = data.response || data.answer || data.message || JSON.stringify(data);
+    appendMessage('agent', reply);
+    setStatus('Research Agent ready');
+  } catch (err) {
+    removeTyping();
+    appendMessage('agent',
+      `**Error:** Could not reach the backend.\n\n` +
+      `\`${err.message}\`\n\n` +
+      `Make sure the backend server is running at **${getBackendUrl()}**.\n\n` +
+      `Start it with:\n\`\`\`bash\ncd backend\nuvicorn server:app --reload --port 8000\n\`\`\``
+    );
+    setStatus('Backend unavailable', true);
+  }
+
+  isLoading = false;
+  sendBtn.disabled = false;
+}
+
+// ── Event listeners ───────────────────────────────────────────────────────────
+sendBtn.addEventListener('click', () => sendMessage(inputEl.value));
+
+inputEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage(inputEl.value);
+  }
+});
+
+// Quick action buttons
+document.querySelectorAll('.quick-btn[data-prompt]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const prompt = btn.getAttribute('data-prompt');
+    inputEl.value = prompt;
+    inputEl.style.height = 'auto';
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + 'px';
+    inputEl.focus();
+  });
+});
+
+// Chip buttons
+document.querySelectorAll('.chip[data-prompt]').forEach(chip => {
+  chip.addEventListener('click', () => {
+    sendMessage(chip.getAttribute('data-prompt'));
+  });
+});
+</script>
+</body>
+</html>
